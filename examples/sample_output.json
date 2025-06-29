@@ -1,0 +1,96 @@
+[
+  {
+    "url": "https://example-mcp-server.com:8000/mcp",
+    "ip": "192.168.1.100",
+    "port": 8000,
+    "transport": "sse",
+    "protocol_version": "2024-11-05",
+    "server_info": {
+      "name": "example-mcp-server",
+      "version": "1.0.0"
+    },
+    "capabilities": {
+      "tools": [
+        {
+          "name": "search_documents",
+          "description": "Search through document database",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "query": {
+                "type": "string",
+                "description": "Search query"
+              }
+            }
+          }
+        },
+        {
+          "name": "get_weather",
+          "description": "Get current weather information",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "location": {
+                "type": "string",
+                "description": "Location to get weather for"
+              }
+            }
+          }
+        }
+      ],
+      "resources": [
+        {
+          "uri": "file://documents/",
+          "name": "Document Repository",
+          "description": "Access to document database"
+        }
+      ]
+    },
+    "security_findings": {
+      "authentication": "none",
+      "ssl_enabled": true,
+      "cors_enabled": true,
+      "rate_limiting": "unknown"
+    },
+    "risk_level": "medium",
+    "discovered_at": "2024-01-15T10:30:00Z",
+    "response_time_ms": 145
+  },
+  {
+    "url": "http://demo-mcp.example.org:3000/api/mcp",
+    "ip": "203.0.113.50",
+    "port": 3000,
+    "transport": "http",
+    "protocol_version": "2024-11-05",
+    "server_info": {
+      "name": "demo-server",
+      "version": "0.9.0"
+    },
+    "capabilities": {
+      "tools": [
+        {
+          "name": "database_query",
+          "description": "Execute database queries",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "sql": {
+                "type": "string",
+                "description": "SQL query to execute"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "security_findings": {
+      "authentication": "none",
+      "ssl_enabled": false,
+      "cors_enabled": false,
+      "rate_limiting": "none"
+    },
+    "risk_level": "high",
+    "discovered_at": "2024-01-15T10:32:15Z",
+    "response_time_ms": 89
+  }
+] 
