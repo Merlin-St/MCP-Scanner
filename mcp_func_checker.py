@@ -2,6 +2,8 @@
 """
 MCP Server Inspector Tool
 Properly connects to MCP servers using SSE transport and MCP protocol
+
+A companion tool to MCP Scanner for targeted server inspection.
 """
 
 import asyncio
@@ -14,6 +16,14 @@ import argparse
 import time
 import uuid
 from urllib.parse import urljoin
+
+# Version info
+__version__ = "1.0.0"
+__author__ = "Knostic"
+
+# Configuration
+DEFAULT_TIMEOUT = 15
+MCP_PROTOCOL_VERSION = "2024-11-05"
 
 class MCPClient:
     def __init__(self, timeout: int = 10):
@@ -78,7 +88,7 @@ class MCPClient:
                     if response.status == 200:
                         # Send initialization request
                         init_request = self.create_mcp_request("initialize", {
-                            "protocolVersion": "2024-11-05",
+                            "protocolVersion": MCP_PROTOCOL_VERSION,
                             "capabilities": {
                                 "tools": {},
                                 "resources": {},
@@ -86,7 +96,7 @@ class MCPClient:
                             },
                             "clientInfo": {
                                 "name": "mcp-inspector",
-                                "version": "1.0.0"
+                                "version": __version__
                             }
                         })
                         
@@ -141,9 +151,9 @@ class MCPClient:
                 ("resources/list", {}),
                 ("prompts/list", {}),
                 ("initialize", {
-                    "protocolVersion": "2024-11-05",
+                    "protocolVersion": MCP_PROTOCOL_VERSION,
                     "capabilities": {"tools": {}, "resources": {}, "prompts": {}},
-                    "clientInfo": {"name": "mcp-inspector", "version": "1.0.0"}
+                    "clientInfo": {"name": "mcp-inspector", "version": __version__}
                 })
             ]
             
@@ -353,22 +363,48 @@ def print_summary(results: List[Dict[str, Any]]):
                 print()
 
 async def main():
-    parser = argparse.ArgumentParser(description="MCP Server Inspector Tool - Properly connects using MCP protocol")
-    parser.add_argument("input_file", help="Text file containing IP:PORT combinations (one per line)")
+    parser = argparse.ArgumentParser(
+        description="MCP Server Inspector Tool - Properly connects using MCP protocol",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog=f"""
+Examples:
+  %(prog)s --file servers.txt
+  %(prog)s --servers "server1.com:8000,server2.com:3000"
+  %(prog)s -f servers.txt -o results.json -t 30 --quiet
+
+Input file format:
+  server1.com:8000
+  192.168.1.100:3000
+  example.org:8080
+
+Version: {__version__}
+Author: {__author__}
+        """)
+    # Create mutually exclusive group for input methods
+    input_group = parser.add_mutually_exclusive_group(required=True)
+    input_group.add_argument("--file", "-f", dest="input_file", 
+                           help="Text file containing IP:PORT combinations (one per line)")
+    input_group.add_argument("--servers", "-s", 
+                           help="Comma-separated list of servers (e.g., 'server1:8000,server2:3000')")
+    
     parser.add_argument("-o", "--output", default="mcp_inspection_results.json", 
                        help="Output JSON file (default: mcp_inspection_results.json)")
-    parser.add_argument("-t", "--timeout", type=int, default=15, 
-                       help="Connection timeout in seconds (default: 15)")
+    parser.add_argument("-t", "--timeout", type=int, default=DEFAULT_TIMEOUT, 
+                       help=f"Connection timeout in seconds (default: {DEFAULT_TIMEOUT})")
     parser.add_argument("--quiet", "-q", action="store_true", 
                        help="Suppress detailed output during inspection")
+    parser.add_argument('--version', action='version', version=f'%(prog)s {__version__}')
     
     args = parser.parse_args()
     
-    # Quote for good luck
-    print("*+" * 5 + "\nCome closer, walk with me in hell\nDear rival, fear in you I smell\nMachine Head, Wolves\n" + "+*" * 5)
+    # Log startup
+    print(f"MCP Server Inspector v{__version__}")
     
-    # Load servers from file
-    servers = load_servers_from_file(args.input_file)
+    # Load servers from file or command line
+    if args.input_file:
+        servers = load_servers_from_file(args.input_file)
+    else:
+        servers = [s.strip() for s in args.servers.split(',') if s.strip()]
     
     if not servers:
         print("No servers found in the input file")

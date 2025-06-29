@@ -25,6 +25,16 @@ import re
 from datetime import datetime
 import os
 
+# Version and configuration
+__version__ = "1.0.0"
+__author__ = "Knostic"
+
+# Default configuration
+DEFAULT_MAX_RESULTS = 50
+DEFAULT_MAX_CONCURRENT = 10
+DEFAULT_TIMEOUT = 30
+MCP_PROTOCOL_VERSION = "2024-11-05"
+
 # Configure logging with UTF-8 encoding
 def setup_logging(timestamp: str):
     """Setup logging with timestamped log file"""
@@ -281,7 +291,10 @@ class MCPServerScanner:
         
         for i, filter_query in enumerate(self.shodan_filters, 1):
             try:
-                self.logger.info(f"[{i}/{len(self.shodan_filters)}] Searching: {filter_query}")
+                # Progress indicator
+                progress = f"[{i:3d}/{len(self.shodan_filters)}]"
+                print(f"\r{progress} Processing filters... ({i/len(self.shodan_filters)*100:.1f}%)", end='', flush=True)
+                self.logger.info(f"{progress} Searching: {filter_query}")
                 
                 # Retry logic for API connectivity issues
                 max_retries = 3
@@ -323,6 +336,9 @@ class MCPServerScanner:
             except Exception as e:
                 self.logger.error(f"Unexpected error for filter '{filter_query}': {e}")
                 continue
+        
+        # Clear progress line
+        print(f"\r{' ' * 60}\r", end='')
         
         self.logger.info(f"Shodan search completed. Found {len(all_results)} unique targets.")
         self.discovered_servers = all_results
@@ -429,11 +445,11 @@ class MCPServerScanner:
             "id": 1,
             "method": "initialize",
             "params": {
-                "protocolVersion": "2024-11-05",
+                "protocolVersion": MCP_PROTOCOL_VERSION,
                 "capabilities": {},
                 "clientInfo": {
                     "name": "mcp-scanner",
-                    "version": "1.0.0"
+                    "version": __version__
                 }
             }
         }
@@ -765,15 +781,31 @@ async def main():
     log_file = setup_logging(timestamp)
     logger = logging.getLogger(__name__)
     
-    parser = argparse.ArgumentParser(description='MCP Server Discovery and Interaction Tool')
-    parser.add_argument('--api-key', required=True, help='Shodan API key')
-    parser.add_argument('--max-results', type=int, default=50, help='Max results per filter')
-    parser.add_argument('--max-concurrent', type=int, default=10, help='Max concurrent connections')
+    parser = argparse.ArgumentParser(
+        description='MCP Server Discovery and Interaction Tool - Discover and analyze Model Context Protocol servers',
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog=f"""
+Examples:
+  %(prog)s --api-key YOUR_API_KEY
+  %(prog)s --api-key YOUR_API_KEY --max-results 100 --max-concurrent 15
+
+For help getting a Shodan API key, visit: https://shodan.io/
+
+Version: {__version__}
+Author: {__author__}
+        """)
+    parser.add_argument('--api-key', required=True, help='Shodan API key (required)')
+    parser.add_argument('--max-results', type=int, default=DEFAULT_MAX_RESULTS, 
+                       help=f'Maximum results per Shodan filter (default: {DEFAULT_MAX_RESULTS})')
+    parser.add_argument('--max-concurrent', type=int, default=DEFAULT_MAX_CONCURRENT,
+                       help=f'Maximum concurrent connections (default: {DEFAULT_MAX_CONCURRENT})')
+    parser.add_argument('--version', action='version', version=f'%(prog)s {__version__}')
     
     args = parser.parse_args()
     
-    # Quote for good luck
-    logger.info("\n*+"*5 + "\nI break down, falling into love now with falling apart\nI'm a popular, popular monster" + "\n*+" *5 + "\nPopular Monster by Falling in Reverse\n")
+    # Log scan startup
+    logger.info(f"Starting MCP Scanner v{__version__}")
+    logger.info(f"Configuration: max_results={args.max_results}, max_concurrent={args.max_concurrent}")
     
     async with MCPServerScanner(args.api_key, timestamp) as scanner:
         # Step 0: Validate API key
